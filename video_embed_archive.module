@@ -105,7 +105,7 @@ function video_embed_archive_handle_video($url, array $settings) {
   else {
     drupal_set_message(t('Error with getting id of the video.'), 'error');
   }
-  // Just return an empty string if there is no id,
+  // Just return an empty string if there is no id
   // so we don't have broken embeds showing up.
   return $output;
 }
