@@ -18,8 +18,8 @@
     ),
   // Defaults are the defaults to provide to your form.
     'defaults' => array(
-      'width' => '640px',
-      'height' => '480px',
+      'width' => '640',
+      'height' => '480',
     ),
   );
   return $handlers;
