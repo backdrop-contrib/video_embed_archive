@@ -1,0 +1,8 @@
+name = Video Embed Archive.org
+description = "Provides Archive handler for Video Embed Fields."
+core = "7.x"
+version = "7.x-1.0"
+package = Custom
+configure = admin/config/media/vef_video_styles
+
+dependencies[] = video_embed_field
