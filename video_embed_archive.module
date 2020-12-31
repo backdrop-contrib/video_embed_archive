@@ -6,109 +6,131 @@
  * @see video_embed_field.api.php for more documentation
  */
  
+ /**
+ * Implements hook_video_embed_handler_info().
+ */
  function video_embed_archive_video_embed_handler_info() {
   $handlers = array();
+  
   $handlers['archive'] = array(
-    'title' => 'Archive Video',
+    'title' => 'Archive.org Video',
     'function' => 'video_embed_archive_handle_video',
-    //'thumbnail_function' => 'video_embed_dailymotion_handle_thumbnail',
+    //'thumbnail_function' => 'video_embed_archive_handle_thumbnail',
+    'thumbnail_default' => backdrop_get_path('module', 'video_embed_archive') . '/img/archive.png',
     'form' => 'video_embed_archive_form',
+    'form_validate' => 'video_embed_field_handler_archive_form_validate',
     'domains' => array(
       'archive.org',
     ),
-  // Defaults are the defaults to provide to your form.
     'defaults' => array(
-      'width' => '640',
-      'height' => '480',
+      'width' => 640,
+      'height' => 480,
     ),
   );
+  
   return $handlers;
 }
 
 /**
- * Implements hook_theme().
+ * Defines the form elements for the Archive videos configuration form.
  *
- * Using video_embed_archive.tpl.php as template.
- */
-function video_embed_archive_theme() {
-  return array(
-    'video_embed_archive' => array(
-      'template' => 'video_embed_archive',
-      'arguments' => array(
-        'url' => NULL,
-        'width' => NULL,
-        'height' => NULL,
-      ),
-    ),
-  );
-}
-
-/**
- * Configuration form (the callback for the form key in info).
+ * @param array $defaults
+ *   The form default values.
  *
- * Provide a form to configure out video settings.
+ * @return array
+ *   The provider settings form array.
  */
 function video_embed_archive_form($defaults) {
   $form = array();
-  // Element for width.
+
   $form['width'] = array(
     '#type' => 'textfield',
     '#title' => t('Player Width'),
     '#description' => t('The width of the player.'),
     '#default_value' => $defaults['width'],
-    '#element_validate' => array('element_validate_integer_positive'),
   );
-  // Form element for the height of the player -
-  // note we're using the default from defaults.
+
   $form['height'] = array(
     '#type' => 'textfield',
     '#title' => t('Player Height'),
     '#description' => t('The height of the player.'),
     '#default_value' => $defaults['height'],
-    '#element_validate' => array('element_validate_integer_positive'),
+  );
+
+  $form['class'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Player CSS class'),
+    '#description' => t('CSS class to add to the player'),
+    '#default_value' => $defaults['class'],
   );
 
   return $form;
 }
 
 /**
- * This is the video handler (the 'function' key from handler_info).
+ * Validates the form elements for the Archive video configuration form.
  *
- * Function handles url and returns embed video html code.
+ * @param array $element
+ *   The form element to validate.
+ * @param array $form_state
+ *   The form to validate state.
+ * @param array $form
+ *   The form to validate structure.
+ */
+function video_embed_field_handler_archive_form_validate($element, &$form_state, $form) {
+  video_embed_field_validate_dimensions($element);
+}
+
+/**
+ * Handler for Archive videos.
  *
  * @param string $url
- *   This is string witch user input into video field.
+ *   The video URL.
  * @param array $settings
- *   Settings which were defined by admin.
+ *   The settings array.
  *
- * @return mixed
- *   Return rendered html code or empty string if fails to get id from url.
+ * @return string|bool
+ *   The video iframe, or FALSE in case the ID can't be retrieved from the URL.
  */
-function video_embed_archive_handle_video($url, array $settings) {
-  $output = '';
-  $archive_video_id = _video_embed_archive_get_video_id($url);
+function video_embed_archive_handle_video($url, $settings) {
+  $id = _video_embed_archive_get_video_id($url);
 
-  if ($archive_video_id) {
-    // Embed code.
-    $embed = theme('video_embed_archive', array(
-        'url' => '' . $archive_video_id . '',
-        'width' => $settings['width'],
-        'height' => $settings['height'],
-      )
-    );
-    // Return a render array.
+  if ($id) {
+    // Our embed code.
+    $embed='<iframe class="@class" src="//archive.org/embed/!id" width="@width" height="@height" frameborder="0" webkitallowfullscreen="true" mozallowfullscreen="true" allowfullscreen></iframe> ';
+    // Use format_string to replace our placeholders with the settings values.
+    $embed = format_string($embed, array(
+      '!id' => $id,
+      '@width' => $settings['width'],
+      '@height' => $settings['height'],
+      '@class' => $settings['class'],
+    ));
+
     $video = array(
       '#markup' => $embed,
     );
-    $output = $video;
+    return $video;
   }
-  else {
-    drupal_set_message(t('Error with getting id of the video.'), 'error');
-  }
-  // Just return an empty string if there is no id
-  // so we don't have broken embeds showing up.
-  return $output;
+
+  return FALSE;
 }
+
+/**
+ * Retrieve information about the thumbnail for a given url
+ * @param $url - the url of the video as entered by the user
+ * @return an array with the keys:
+ *   'id' => an id for the video which is unique to your provider, used for naming the cached thumbnail file
+ *   'url' => the url to retrieve the thumbnail from
+ */
+function video_embed_archive_handle_thumbnail($url) {
+  $id = _video_embed_archive_get_video_id($url);
+  
+  return array(
+    'id' => $id,
+    'url' => 'https://archive.org/embed/services/img/' . $id . '',
+  );
+}
+
 
 /**
  * Helper function to take an archive video url and return its id.
@@ -134,17 +156,4 @@ function _video_embed_archive_get_video_id($url) {
     $output = rtrim($matches[1], '/');
   }
   return $output;
-}
-
-/**
- * Implements hook_preprocess_hook().
- */
-function video_embed_archive_preprocess_video_embed_archive(&$variables) {
-  if (!empty($variables['width'])) {
-    $variables['width'] = check_plain($variables['width']);
-  }
-
-  if (!empty($variables['height'])) {
-    $variables['height'] = check_plain($variables['height']);
-  }
 }
